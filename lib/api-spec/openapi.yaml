@@ -3,20 +3,29 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: API for Xưởng Máy Gỗ Việt — woodworking machinery e-commerce
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Admin authentication
+  - name: products
+    description: Product catalog
+  - name: posts
+    description: Blog posts / news
+  - name: home
+    description: Public homepage aggregate
+  - name: admin
+    description: Admin-only operations
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +33,793 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/login:
+    post:
+      operationId: adminLogin
+      tags: [auth]
+      summary: Admin login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/me:
+    get:
+      operationId: getCurrentAdmin
+      tags: [auth]
+      summary: Get current admin from bearer token
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current admin
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUser"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /home/summary:
+    get:
+      operationId: getHomeSummary
+      tags: [home]
+      summary: Homepage aggregate — featured products, latest posts, categories
+      responses:
+        "200":
+          description: Aggregate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HomeSummary"
+
+  /categories:
+    get:
+      operationId: listCategories
+      tags: [products]
+      summary: List all categories with product counts
+      responses:
+        "200":
+          description: Categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+
+  /products:
+    get:
+      operationId: listProducts
+      tags: [products]
+      summary: List products (public)
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: featured
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+
+  /products/featured:
+    get:
+      operationId: listFeaturedProducts
+      tags: [products]
+      summary: List featured products (homepage hero)
+      responses:
+        "200":
+          description: Featured
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+
+  /products/{slug}:
+    get:
+      operationId: getProductBySlug
+      tags: [products]
+      summary: Get a product by slug
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /posts:
+    get:
+      operationId: listPosts
+      tags: [posts]
+      summary: List published posts
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Posts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Post"
+
+  /posts/{slug}:
+    get:
+      operationId: getPostBySlug
+      tags: [posts]
+      summary: Get a post by slug
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Post
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Post"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/stats:
+    get:
+      operationId: getAdminStats
+      tags: [admin]
+      summary: Admin dashboard counts
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStats"
+
+  /admin/products:
+    get:
+      operationId: listAdminProducts
+      tags: [admin]
+      summary: List all products for admin (incl. unpublished)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+    post:
+      operationId: createProduct
+      tags: [admin]
+      summary: Create a product
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+
+  /admin/products/{id}:
+    patch:
+      operationId: updateProduct
+      tags: [admin]
+      summary: Update a product
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProductRequest"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteProduct
+      tags: [admin]
+      summary: Delete a product
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /admin/posts:
+    get:
+      operationId: listAdminPosts
+      tags: [admin]
+      summary: List all posts for admin
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Posts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Post"
+    post:
+      operationId: createPost
+      tags: [admin]
+      summary: Create a post
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePostRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Post"
+
+  /admin/posts/{id}:
+    patch:
+      operationId: updatePost
+      tags: [admin]
+      summary: Update a post
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePostRequest"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Post"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deletePost
+      tags: [admin]
+      summary: Delete a post
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
   schemas:
     HealthStatus:
       type: object
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    LoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+      required: [username, password]
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        admin:
+          $ref: "#/components/schemas/AdminUser"
+      required: [token, admin]
+
+    AdminUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        displayName:
+          type: string
+      required: [id, username, displayName]
+
+    Category:
+      type: object
+      properties:
+        slug:
+          type: string
+        name:
+          type: string
+        productCount:
+          type: integer
+      required: [slug, name, productCount]
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+        slug:
+          type: string
+        name:
+          type: string
+        shortDescription:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        salePrice:
+          type: ["number", "null"]
+        currency:
+          type: string
+        categorySlug:
+          type: string
+        categoryName:
+          type: string
+        brand:
+          type: string
+        sku:
+          type: string
+        powerKw:
+          type: ["number", "null"]
+        weightKg:
+          type: ["number", "null"]
+        dimensions:
+          type: ["string", "null"]
+        warrantyMonths:
+          type: ["integer", "null"]
+        origin:
+          type: ["string", "null"]
+        coverImageUrl:
+          type: string
+        gallery:
+          type: array
+          items:
+            type: string
+        features:
+          type: array
+          items:
+            type: string
+        specs:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpecItem"
+        inStock:
+          type: boolean
+        featured:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - slug
+        - name
+        - shortDescription
+        - description
+        - price
+        - currency
+        - categorySlug
+        - categoryName
+        - brand
+        - sku
+        - coverImageUrl
+        - gallery
+        - features
+        - specs
+        - inStock
+        - featured
+        - createdAt
+        - updatedAt
+
+    SpecItem:
+      type: object
+      properties:
+        label:
+          type: string
+        value:
+          type: string
+      required: [label, value]
+
+    CreateProductRequest:
+      type: object
+      properties:
+        slug:
+          type: string
+        name:
+          type: string
+        shortDescription:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        salePrice:
+          type: ["number", "null"]
+        currency:
+          type: string
+        categorySlug:
+          type: string
+        categoryName:
+          type: string
+        brand:
+          type: string
+        sku:
+          type: string
+        powerKw:
+          type: ["number", "null"]
+        weightKg:
+          type: ["number", "null"]
+        dimensions:
+          type: ["string", "null"]
+        warrantyMonths:
+          type: ["integer", "null"]
+        origin:
+          type: ["string", "null"]
+        coverImageUrl:
+          type: string
+        gallery:
+          type: array
+          items:
+            type: string
+        features:
+          type: array
+          items:
+            type: string
+        specs:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpecItem"
+        inStock:
+          type: boolean
+        featured:
+          type: boolean
+      required:
+        - slug
+        - name
+        - shortDescription
+        - description
+        - price
+        - currency
+        - categorySlug
+        - categoryName
+        - brand
+        - sku
+        - coverImageUrl
+        - gallery
+        - features
+        - specs
+        - inStock
+        - featured
+
+    UpdateProductRequest:
+      type: object
+      properties:
+        slug:
+          type: string
+        name:
+          type: string
+        shortDescription:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        salePrice:
+          type: ["number", "null"]
+        currency:
+          type: string
+        categorySlug:
+          type: string
+        categoryName:
+          type: string
+        brand:
+          type: string
+        sku:
+          type: string
+        powerKw:
+          type: ["number", "null"]
+        weightKg:
+          type: ["number", "null"]
+        dimensions:
+          type: ["string", "null"]
+        warrantyMonths:
+          type: ["integer", "null"]
+        origin:
+          type: ["string", "null"]
+        coverImageUrl:
+          type: string
+        gallery:
+          type: array
+          items:
+            type: string
+        features:
+          type: array
+          items:
+            type: string
+        specs:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpecItem"
+        inStock:
+          type: boolean
+        featured:
+          type: boolean
+
+    Post:
+      type: object
+      properties:
+        id:
+          type: integer
+        slug:
+          type: string
+        title:
+          type: string
+        excerpt:
+          type: string
+        content:
+          type: string
+        coverImageUrl:
+          type: string
+        author:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        published:
+          type: boolean
+        publishedAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - slug
+        - title
+        - excerpt
+        - content
+        - coverImageUrl
+        - author
+        - tags
+        - published
+        - createdAt
+        - updatedAt
+
+    CreatePostRequest:
+      type: object
+      properties:
+        slug:
+          type: string
+        title:
+          type: string
+        excerpt:
+          type: string
+        content:
+          type: string
+        coverImageUrl:
+          type: string
+        author:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        published:
+          type: boolean
+      required:
+        - slug
+        - title
+        - excerpt
+        - content
+        - coverImageUrl
+        - author
+        - tags
+        - published
+
+    UpdatePostRequest:
+      type: object
+      properties:
+        slug:
+          type: string
+        title:
+          type: string
+        excerpt:
+          type: string
+        content:
+          type: string
+        coverImageUrl:
+          type: string
+        author:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        published:
+          type: boolean
+
+    HomeSummary:
+      type: object
+      properties:
+        featuredProducts:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+        latestPosts:
+          type: array
+          items:
+            $ref: "#/components/schemas/Post"
+        categories:
+          type: array
+          items:
+            $ref: "#/components/schemas/Category"
+        totalProducts:
+          type: integer
+      required: [featuredProducts, latestPosts, categories, totalProducts]
+
+    AdminStats:
+      type: object
+      properties:
+        totalProducts:
+          type: integer
+        featuredProducts:
+          type: integer
+        outOfStockProducts:
+          type: integer
+        totalPosts:
+          type: integer
+        publishedPosts:
+          type: integer
+        totalCategories:
+          type: integer
+      required:
+        - totalProducts
+        - featuredProducts
+        - outOfStockProducts
+        - totalPosts
+        - publishedPosts
+        - totalCategories
