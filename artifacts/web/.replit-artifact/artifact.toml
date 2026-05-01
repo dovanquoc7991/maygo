@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Xưởng Máy Gỗ Việt"
+version = "1.0.0"
+id = "artifacts/web"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22333
+
+[services.development]
+run = "npm run dev --workspace @workspace/web"
+
+[services.production]
+build = [ "npm", "run", "build", "--workspace", "@workspace/web" ]
+publicDir = "artifacts/web/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22333"
+BASE_PATH = "/"
