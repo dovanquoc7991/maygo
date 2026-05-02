@@ -30,3 +30,8 @@ externalPort = 80
 [[ports]]
 localPort = 22333
 externalPort = 3000
+
+[userenv]
+
+[userenv.shared]
+EXTERNAL_DB_URL = "postgresql://csf71654_maygo_user:c8b67921caf9765e0e72@103.138.88.63:5432/csf71654_maygo_db"
